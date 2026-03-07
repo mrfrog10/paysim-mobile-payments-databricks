@@ -1,0 +1,522 @@
+{
+ "datasets": [
+  {
+   "name": "kpis",
+   "displayName": "KPIs",
+   "queryLines": [
+    "SELECT * FROM workspace.paysim.gold_kpis\n"
+   ]
+  },
+  {
+   "name": "types",
+   "displayName": "Type mix",
+   "queryLines": [
+    "SELECT type, 'Share of transactions (%)' AS measure, pct_txns AS pct FROM workspace.paysim.gold_type_mix\n",
+    "UNION ALL SELECT type, 'Share of value (%)', pct_value FROM workspace.paysim.gold_type_mix\n"
+   ]
+  },
+  {
+   "name": "hourly",
+   "displayName": "Hourly",
+   "queryLines": [
+    "SELECT hour_of_day, avg_txns_per_day, fraud_rate_pct, fraud_n FROM workspace.paysim.gold_hourly\n"
+   ]
+  },
+  {
+   "name": "ret",
+   "displayName": "Retention",
+   "queryLines": [
+    "SELECT concat('Week ', cohort_week, ' cohort') AS cohort, weeks_since, retention_pct\n",
+    "FROM workspace.paysim.gold_cohort_retention WHERE weeks_since > 0 AND cohort_week <= 3\n"
+   ]
+  },
+  {
+   "name": "rules",
+   "displayName": "Fraud rules",
+   "queryLines": [
+    "WITH r AS (SELECT CASE WHEN rule LIKE 'Built-in%' THEN '1 Built-in flag'\n",
+    "                          WHEN rule LIKE '%OR night%' THEN '3 Drain + night rule'\n",
+    "                          ELSE '2 Drain rule' END AS rule, recall_pct, precision_pct FROM workspace.paysim.gold_fraud_rules)\n",
+    "SELECT rule, 'Recall (%)' AS metric, recall_pct AS pct FROM r\n",
+    "UNION ALL SELECT rule, 'Precision (%)', precision_pct FROM r\n"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "overview",
+   "displayName": "Overview",
+   "layout": [
+    {
+     "widget": {
+      "name": "title",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## Mobile payments: usage and fraud\n",
+        "PaySim synthetic mobile-money data: 6.36M transactions over 31 simulated days. SQL + PySpark on Delta tables.\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k1",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "fields": [
+          {
+           "name": "total_txns",
+           "expression": "`total_txns`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "total_txns",
+         "displayName": "Transactions"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Transactions"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k2",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "fields": [
+          {
+           "name": "total_value_bn",
+           "expression": "`total_value_bn`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "total_value_bn",
+         "displayName": "Value moved (bn)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Value moved (bn)"
+       }
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k3",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "fields": [
+          {
+           "name": "fraud_rate_pct",
+           "expression": "`fraud_rate_pct`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "fraud_rate_pct",
+         "displayName": "Fraud rate (% of txns)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Fraud rate (% of txns)"
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "c1",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "types",
+         "fields": [
+          {
+           "name": "type",
+           "expression": "`type`"
+          },
+          {
+           "name": "measure",
+           "expression": "`measure`"
+          },
+          {
+           "name": "pct",
+           "expression": "`pct`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "type",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Transaction type"
+        },
+        "y": {
+         "fieldName": "pct",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "%"
+        },
+        "color": {
+         "fieldName": "measure",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Measure"
+        }
+       },
+       "mark": {
+        "layout": "group"
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "1 · What people use it for: count vs value"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 4,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "c2",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "hourly",
+         "fields": [
+          {
+           "name": "hour_of_day",
+           "expression": "`hour_of_day`"
+          },
+          {
+           "name": "avg_txns_per_day",
+           "expression": "`avg_txns_per_day`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "hour_of_day",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Hour of day"
+        },
+        "y": {
+         "fieldName": "avg_txns_per_day",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Avg transactions per day"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "2 · Peak hours: average transactions per hour"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 4,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "c3",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "hourly",
+         "fields": [
+          {
+           "name": "hour_of_day",
+           "expression": "`hour_of_day`"
+          },
+          {
+           "name": "fraud_rate_pct",
+           "expression": "`fraud_rate_pct`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "hour_of_day",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Hour of day"
+        },
+        "y": {
+         "fieldName": "fraud_rate_pct",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Fraud rate (%)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "3 · Fraud rate by hour: ~340 frauds every hour, so night rate jumps"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 10,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "c4",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "ret",
+         "fields": [
+          {
+           "name": "cohort",
+           "expression": "`cohort`"
+          },
+          {
+           "name": "weeks_since",
+           "expression": "`weeks_since`"
+          },
+          {
+           "name": "retention_pct",
+           "expression": "`retention_pct`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "weeks_since",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Weeks since first activity"
+        },
+        "y": {
+         "fieldName": "retention_pct",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Accounts active again (%)"
+        },
+        "color": {
+         "fieldName": "cohort",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Cohort"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "4 · Weekly cohort retention (send or receive)"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 10,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "c5",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "rules",
+         "fields": [
+          {
+           "name": "rule",
+           "expression": "`rule`"
+          },
+          {
+           "name": "metric",
+           "expression": "`metric`"
+          },
+          {
+           "name": "pct",
+           "expression": "`pct`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "rule",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Rule"
+        },
+        "y": {
+         "fieldName": "pct",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "%"
+        },
+        "color": {
+         "fieldName": "metric",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Metric"
+        }
+       },
+       "mark": {
+        "layout": "group"
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "5 · Fraud rules: built-in flag vs account-drain rule"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 16,
+      "width": 3,
+      "height": 9
+     }
+    },
+    {
+     "widget": {
+      "name": "insights",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## 3 insights for the product team\n",
+        "\n",
+        "**1. Fraud is a night-time problem.** About 340 fraudulent transactions happen every hour, day or night, but genuine use falls by 99% overnight. Between 02:00 and 04:59 roughly 1 in 5 transactions is fraud (16–22%), against 0.07% at midday. *Action:* add step-up checks (e.g. in-app confirmation or a short hold) for TRANSFER and CASH_OUT between 01:00 and 06:00. Few genuine users would notice.\n",
+        "\n",
+        "**2. The current fraud flag misses 99.8% of fraud.** `isFlaggedFraud` fired 16 times out of 8,213 frauds. One simple rule, a TRANSFER or CASH_OUT that empties the sender's balance, catches 97.6% with no false alarms in this data. *Action:* make \"full-balance withdrawal\" a high-priority alert. Check it against real data first, because a simulator can make one rule look better than it is.\n",
+        "\n",
+        "**3. Payments are frequent but small, and few users come back.** PAYMENT is 34% of transactions but only 2.5% of value. Only 8% of week-1 accounts are active again in week 2, and 99.85% of senders send once. *Action:* the habit-forming product is merchant payments. Test re-engagement after the first payment (cashback on a second payment within 7 days), and track week-2 retention as the main metric.\n",
+        "\n"
+       ]
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 16,
+      "width": 3,
+      "height": 9
+     }
+    }
+   ]
+  }
+ ]
+}
